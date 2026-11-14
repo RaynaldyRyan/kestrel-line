@@ -1,8 +1,13 @@
 # Kestrel Line
 
+[![make.fun · threejs-fps-02](https://make.fun/badge/threejs-fps-02.svg)](https://make.fun/bounty/threejs-fps-02?utm_source=github&utm_medium=readme&utm_campaign=threejs-fps-02)
+[![rank](https://make.fun/badge/threejs-fps-02/RaynaldyRyan/kestrel-line/rank.svg)](https://make.fun/bounty/threejs-fps-02/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=threejs-fps-02)
+[![reward](https://make.fun/badge/threejs-fps-02/RaynaldyRyan/kestrel-line/reward.svg)](https://make.fun/bounty/threejs-fps-02?utm_source=github&utm_medium=readme&utm_campaign=threejs-fps-02)
+
 A round-based tactical FPS in three.js, built for the make.fun bounty
-"Make the best three.js tactical FPS". Counter-Strike-style, never a copy:
-an original map, original weapons and original names.
+[Make the best three.js tactical FPS](https://make.fun/bounty/threejs-fps-02).
+Counter-Strike-style, never a copy: an original map, original weapons and
+original names.
 
 Two teams of five fight short rounds on Halcyon Depot, a dusk-lit industrial
 compound. The Kestrels attack with a demolition charge; the Wardens defend
