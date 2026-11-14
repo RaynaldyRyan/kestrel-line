@@ -2,11 +2,12 @@
 // step every fixed tick. A bot perceives with a vision cone and a line-of-sight
 // test, hears gunshots inside 26 m, routes over the map's waypoint graph, holds
 // a post with a slow yaw sweep, and fights in bursts with a human-like reaction
-// delay. Wardens converge on Site A when the charge is planted; the Kestrel
-// carrier walks its route to the site and plants.
-import { WAYPOINTS, ROUTES, HOLDS, SITE, losBlocked, findPath, nearestWaypoint } from './map.js';
+// delay. Wardens converge on the planted site when the charge goes down; the
+// Kestrel carrier walks its route to its target site and plants. Smoke blocks
+// sight; a flash blinds.
+import { WAYPOINTS, ROUTES, HOLDS, SITES, losBlocked, findPath, nearestWaypoint } from './map.js';
 import { stepBody, eyeHeight, setCrouch } from './physics.js';
-import { fireWeapon, startReload, WEAPONS } from './combat.js';
+import { fireWeapon, startReload, smokeBlocks, WEAPONS } from './combat.js';
 import { actorById } from './state.js';
 
 const THINK_EVERY = 0.15;
@@ -19,9 +20,10 @@ const SEE_RANGE = 24;
 const HEAR_RANGE = 26;
 const BOT_SPEED = 0.82;
 
-export function assignBot(actor, role, routeName, holdIndex) {
+export function assignBot(actor, role, routeName, holdIndex, targetSite) {
   actor.bot = {
     role, // 'carrier' | 'assault' | 'hold'
+    targetSite: targetSite || 'A', // the site a carrier walks to
     route: routeName ? ROUTES[routeName].slice() : [],
     wp: 0,
     hold: holdIndex !== undefined ? HOLDS[holdIndex] : null,
@@ -59,23 +61,33 @@ function yawTo(actor, x, z) {
   return Math.atan2(-(x - actor.x), -(z - actor.z));
 }
 
+// One visibility test, shared by the bots' perception and the minimap: in
+// range, inside the vision cone, a clear line of sight, and no smoke cloud
+// between the two. A blinded actor sees nobody.
+export function canSee(state, actor, target) {
+  if (actor.blindT > 0 || !target.alive) return false;
+  const dx = target.x - actor.x;
+  const dz = target.z - actor.z;
+  const d2 = dx * dx + dz * dz;
+  if (d2 > SEE_RANGE * SEE_RANGE) return false;
+  const want = Math.atan2(-dx, -dz);
+  let diff = want - actor.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  if (Math.abs(diff) > 1.0) return false;
+  const eyeY = actor.y + eyeHeight(actor);
+  const chestY = target.y + eyeHeight(target) - 0.25;
+  if (losBlocked(actor.x, eyeY, actor.z, target.x, chestY, target.z)) return false;
+  if (smokeBlocks(actor.x, eyeY, actor.z, target.x, chestY, target.z, state.smokes)) return false;
+  return true;
+}
+
 function visibleEnemies(state, actor) {
   const out = [];
-  const eyeY = actor.y + eyeHeight(actor);
   for (const e of state.actors) {
     if (e.team === actor.team || !e.alive) continue;
-    const dx = e.x - actor.x;
-    const dz = e.z - actor.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 > SEE_RANGE * SEE_RANGE) continue;
-    const want = Math.atan2(-dx, -dz);
-    let diff = want - actor.yaw;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    if (Math.abs(diff) > 1.0) continue;
-    const chestY = e.y + eyeHeight(e) - 0.25;
-    if (losBlocked(actor.x, eyeY, actor.z, e.x, chestY, e.z)) continue;
-    out.push({ enemy: e, d2 });
+    if (!canSee(state, actor, e)) continue;
+    out.push({ enemy: e, d2: (e.x - actor.x) ** 2 + (e.z - actor.z) ** 2 });
   }
   out.sort((a, b) => a.d2 - b.d2);
   return out;
@@ -90,6 +102,12 @@ function routeTo(bot, state, actor, goalId) {
 function think(state, actor) {
   const bot = actor.bot;
   const rng = state.rng;
+  // A flashed bot loses its target at once and stops fighting until it can
+  // see again; it keeps moving on its current orders.
+  if (actor.blindT > 0) {
+    bot.target = null;
+    return;
+  }
   // Perception: nearest visible enemy, or keep the current target briefly after
   // losing sight of it.
   const seen = visibleEnemies(state, actor);
@@ -121,8 +139,9 @@ function think(state, actor) {
   if (actor.channel > 0) return;
   if (actor.team === 0) {
     if (isCarrier) {
-      const dSite = Math.hypot(actor.x - SITE.x, actor.z - SITE.z);
-      if (dSite < SITE.r - 0.5) {
+      const site = SITES[bot.targetSite] || SITES.A;
+      const dSite = Math.hypot(actor.x - site.x, actor.z - site.z);
+      if (dSite < site.r - 0.5) {
         bot.mode = 'plant';
         actor.channelKind = 'plant';
         return;
@@ -136,17 +155,23 @@ function think(state, actor) {
       routeTo(bot, state, actor, nearestWaypoint(state.bomb.x, state.bomb.z));
       return;
     }
+    if (planted) {
+      // The charge is down: fall back and guard the planted site.
+      bot.mode = 'seek';
+      routeTo(bot, state, actor, state.bomb.site === 'B' ? 'siteB' : 'site');
+      return;
+    }
     bot.mode = bot.target !== null ? 'combat' : 'advance';
   } else {
     if (planted) {
-      const dSite = Math.hypot(actor.x - SITE.x, actor.z - SITE.z);
-      if (dSite < SITE.r - 0.5 && (state.bomb.defuser === null || state.bomb.defuser === actor.id)) {
+      const dSite = Math.hypot(actor.x - state.bomb.x, actor.z - state.bomb.z);
+      if (dSite < SITES.A.r - 0.5 && (state.bomb.defuser === null || state.bomb.defuser === actor.id)) {
         bot.mode = 'defuse';
         actor.channelKind = 'defuse';
         return;
       }
       bot.mode = 'seek';
-      routeTo(bot, state, actor, 'site');
+      routeTo(bot, state, actor, state.bomb.site === 'B' ? 'siteB' : 'site');
       return;
     }
     if (bot.target !== null) { bot.mode = 'combat'; return; }

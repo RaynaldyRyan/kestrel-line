@@ -99,6 +99,15 @@ export function createAudio() {
       noise(0.8, 220, 0.9);
       tone(60, 0.6, 0.6, 'sine', 30);
     },
+    smoke() {
+      if (!ensure()) return;
+      noise(0.7, 2400, 0.25, 'highpass');
+    },
+    flash() {
+      if (!ensure()) return;
+      noise(0.15, 3000, 0.6, 'highpass');
+      tone(2400, 0.9, 0.12, 'sine', 1800);
+    },
     plant() {
       if (!ensure()) return;
       tone(980, 0.09, 0.3, 'square');

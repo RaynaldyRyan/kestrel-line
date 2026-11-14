@@ -1,12 +1,16 @@
 // Halcyon Depot: a dusk-lit industrial compound, 64 by 44 metres. Three lanes run
-// north from the Kestrel yard to Site A: Mid (a straight sightline broken by
-// crates), Foundry (west, close corners) and Silo Walk (east, one long lane).
-// Every wall, crate and barrel is one box in BOXES: the same data drives the
-// colliders, the line-of-sight tests and the meshes, so what you see is what
-// blocks you. Waypoints sit in the open lanes; every linked pair has a clear
-// straight run between it, so bots never need to steer around a wall.
+// north from the Kestrel yard: Mid and Silo Walk (east) reach Site A, while
+// Foundry (west) reaches Site B in the depot's far corner. Every wall, crate
+// and barrel is one box in BOXES: the same data drives the colliders, the
+// line-of-sight tests and the meshes, so what you see is what blocks you.
+// Waypoints sit in the open lanes; every linked pair has a clear straight run
+// between it, so bots never need to steer around a wall.
 export const BOUNDS = { minX: -32, maxX: 32, minZ: -22, maxZ: 22 };
-export const SITE = { x: 0, z: -14, r: 4 };
+export const SITES = {
+  A: { x: 0, z: -14, r: 4 },
+  B: { x: -22, z: -16, r: 4 },
+};
+export const SITE = SITES.A;
 export const KESTREL_SPAWN = { x: 0, z: 18, yaw: 0 };
 export const WARDEN_SPAWN = { x: 0, z: -19, yaw: Math.PI };
 
@@ -51,6 +55,10 @@ export const BOXES = [
   // and wedge the bot that spawns there inside its own collider.
   { x: -7, z: -17, w: 2.2, d: 2.2, h: 2.6, k: 'tank' },
   { x: 7, z: -17, w: 2.2, d: 2.2, h: 2.6, k: 'tank' },
+  // Site B props, just outside the ring so the plant zone stays walkable.
+  { x: -25.5, z: -19, w: 2, d: 2, h: 1.2, k: 'crate' },
+  { x: -18.5, z: -19, w: 2, d: 2, h: 1.2, k: 'crate' },
+  { x: -22, z: -20.5, w: 2.2, d: 2.2, h: 2.6, k: 'tank' },
   // Barrels (colliders are 1x1 boxes; the mesh is a cylinder).
   { x: -6, z: 6, w: 1, d: 1, h: 1.1, k: 'barrel' },
   { x: 6, z: 6, w: 1, d: 1, h: 1.1, k: 'barrel' },
@@ -84,7 +92,9 @@ export const WAYPOINTS = {
   aw1: { x: -18, z: 14, links: ['as', 'am1', 'aw2'] },
   aw2: { x: -21, z: 5, links: ['aw1', 'aw3', 'cw'] },
   aw3: { x: -19, z: -5, links: ['aw2', 'aw4', 'cw'] },
-  aw4: { x: -13, z: -11, links: ['aw3', 'sw', 'dw'] },
+  aw4: { x: -13, z: -11, links: ['aw3', 'sw', 'dw', 'bw1'] },
+  bw1: { x: -19, z: -13, links: ['aw4', 'dw', 'siteB'] },
+  siteB: { x: -22, z: -16, links: ['bw1'] },
   sw: { x: -5, z: -14, links: ['site', 'aw4', 'dw'] },
   ae1: { x: 18, z: 14, links: ['as', 'am1', 'ae2'] },
   ae2: { x: 21, z: 5, links: ['ae1', 'ae3', 'ce'] },
@@ -94,7 +104,7 @@ export const WAYPOINTS = {
   cw: { x: -7, z: 0, links: ['am2', 'am3', 'aw2', 'aw3'] },
   ce: { x: 7, z: 0, links: ['am2', 'am3', 'ae2', 'ae3'] },
   ds: { x: 0, z: -19, links: ['dw', 'de', 'dm'] },
-  dw: { x: -14, z: -13, links: ['ds', 'sw', 'aw4'] },
+  dw: { x: -14, z: -13, links: ['ds', 'sw', 'aw4', 'bw1'] },
   de: { x: 14, z: -13, links: ['ds', 'se', 'ae4'] },
   dm: { x: 0, z: -8, links: ['ds', 'am4', 'site'] },
 };
@@ -102,14 +112,18 @@ export const WAYPOINTS = {
 export const ROUTES = {
   mid: ['as', 'am1', 'am2', 'am3', 'am4', 'site'],
   west: ['as', 'aw1', 'aw2', 'aw3', 'aw4', 'sw', 'site'],
+  westB: ['as', 'aw1', 'aw2', 'aw3', 'aw4', 'bw1', 'siteB'],
   east: ['as', 'ae1', 'ae2', 'ae3', 'ae4', 'se', 'site'],
 };
 
+// Five hold posts for five defenders: two watch Site A, two watch Site B, one
+// floats Mid and rotates toward the first noise it hears.
 export const HOLDS = [
   { x: -4, z: -15, yaw: Math.PI * 0.5 },
   { x: 4, z: -15, yaw: -Math.PI * 0.5 },
+  { x: -20, z: -14, yaw: Math.PI * 0.5 },
+  { x: -25, z: -16, yaw: Math.PI },
   { x: 0, z: -8, yaw: 0 },
-  { x: -14, z: -12, yaw: Math.PI * 0.25 },
 ];
 
 export function nearestWaypoint(x, z) {

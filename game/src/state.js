@@ -15,6 +15,15 @@ export const KILL_REWARD = 300;
 export const WIN_REWARD = 3250;
 export const LOSS_REWARD = 1900;
 export const START_MONEY = 800;
+// Round 2 prices and timings. A smoke cloud lasts SMOKE_TIME seconds; a flash
+// blinds out to FLASH_RANGE metres for up to FLASH_BLIND seconds.
+export const SMOKE_PRICE = 300;
+export const FLASH_PRICE = 200;
+export const KIT_PRICE = 400;
+export const HELMET_PRICE = 350;
+export const SMOKE_TIME = 10;
+export const FLASH_RANGE = 12;
+export const FLASH_BLIND = 1.6;
 
 export function mulberry32(seed) {
   let a = seed | 0;
@@ -46,7 +55,14 @@ export function createActor(name, team, isPlayer, x, z, yaw) {
     owned: { pistol: true, smg: false, rifle: false, dmr: false },
     mag: 12,
     reserve: 48,
-    grenades: 0,
+    grenades: 0, // frag grenades; smoke and flash are counted separately
+    smoke: 0,
+    flashes: 0, // flash grenades (not `flash`: that is the render hit-flash)
+    kit: false, // defuse kit: halves defuse time
+    helmet: false, // halves headshot damage taken
+    blindT: 0, // seconds of flash blindness left
+    kills: 0,
+    deaths: 0,
     reloadT: 0,
     cooldown: 0,
     channel: 0, // plant/defuse progress 0..1, 0 when not channelling
@@ -77,6 +93,7 @@ export function createState(seed) {
       mode: 'carried', // carried | dropped | planted | gone
       carrier: 1, // actor id, or null
       x: 0, z: 0,
+      site: null, // 'A' | 'B' once planted, null before
       fuse: 0,
       planter: null,
       defuser: null,
@@ -84,7 +101,8 @@ export function createState(seed) {
       defuseP: 0, // defuse progress 0..1, shared across Wardens
     },
     actors: [],
-    grenades: [], // { x, y, z, vx, vy, vz, fuse, owner }
+    grenades: [], // { x, y, z, vx, vy, vz, fuse, owner, kind }
+    smokes: [], // active smoke clouds { x, y, z, t } — t counts down from SMOKE_TIME
     events: [], // drained once a frame by the HUD and the audio synth
     noises: [], // { x, z, t } gunshots bots can hear
     overReason: '',

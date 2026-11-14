@@ -9,7 +9,9 @@ export function createHud(callbacks) {
     hitmarker: $('hitmarker'),
     healthFill: $('health-fill'),
     healthText: $('health-text'),
-    armorBadge: $('armor-badge'),
+    armorText: $('armor-text'),
+    helmetBadge: $('helmet-badge'),
+    kitBadge: $('kit-badge'),
     ammoMag: $('ammo-mag'),
     ammoReserve: $('ammo-reserve'),
     ammoBox: $('ammo'),
@@ -38,11 +40,15 @@ export function createHud(callbacks) {
     overlayTitle: $('overlay-title'),
     overlayCopy: $('overlay-copy'),
     playBtn: $('play'),
+    teamPick: $('team-pick'),
     keysList: $('keys-list'),
     buyMenu: $('buy-menu'),
     buyMoney: $('buy-money'),
     spectate: $('spectate'),
     hint: $('hint'),
+    flash: $('flash'),
+    scores: $('scores'),
+    scoresBody: $('scores-body'),
   };
   const cache = {};
   let bannerTimer = null;
@@ -63,16 +69,23 @@ export function createHud(callbacks) {
   }
 
   els.playBtn.addEventListener('click', () => callbacks.onPlay());
+  els.teamPick.querySelectorAll('[data-team]').forEach((btn) => {
+    btn.addEventListener('click', () => callbacks.onPlay(Number(btn.getAttribute('data-team'))));
+  });
   els.buyMenu.querySelectorAll('[data-buy]').forEach((btn) => {
     btn.addEventListener('click', () => callbacks.onBuy(btn.getAttribute('data-buy')));
   });
 
   function showOverlay(kind, data) {
     els.overlay.hidden = false;
+    // The start screen offers the team choice; every other overlay keeps the
+    // single play button.
+    const picking = kind === 'start';
+    els.teamPick.hidden = !picking;
+    els.playBtn.hidden = picking;
     if (kind === 'start') {
       els.overlayTitle.textContent = 'Kestrel Line';
-      els.overlayCopy.textContent = 'Halcyon Depot, dusk. The Kestrels carry the charge; the Wardens hold Site A. First to five rounds takes the match.';
-      els.playBtn.textContent = 'Click to play';
+      els.overlayCopy.textContent = 'Halcyon Depot, dusk. Two teams of five fight over two bomb sites: the Kestrels plant the charge at Site A or B, the Wardens stop them or take it apart. First to five rounds takes the match.';
       els.keysList.hidden = false;
     } else if (kind === 'pause') {
       els.overlayTitle.textContent = 'Paused';
@@ -105,7 +118,7 @@ export function createHud(callbacks) {
     setWeapon(name) {
       set('weaponName', name);
     },
-    setHealth(hp, armor) {
+    setHealth(hp, armor, helmet, kit) {
       set('healthText', String(Math.max(0, hp)));
       const w = `${Math.max(0, hp)}%`;
       if (cache.hpW !== w) {
@@ -113,14 +126,20 @@ export function createHud(callbacks) {
         els.healthFill.style.width = w;
         els.healthFill.className = hp <= 25 ? 'low' : '';
       }
-      els.armorBadge.hidden = !armor;
+      set('armorText', armor ? 'ARMOR 100' : 'ARMOR 0');
+      els.helmetBadge.hidden = !helmet;
+      els.kitBadge.hidden = !kit;
     },
     setMoney(m) {
       set('money', `$${m}`);
       set('buyMoney', `$${m}`);
     },
-    setGrenades(n) {
-      set('grenades', n > 0 ? `Grenades ${n}` : 'No grenades');
+    setGrenades(frag, smoke, flash) {
+      const parts = [];
+      if (frag > 0) parts.push(`FRAG ${frag}`);
+      if (smoke > 0) parts.push(`SMOKE ${smoke}`);
+      if (flash > 0) parts.push(`FLASH ${flash}`);
+      set('grenades', parts.length > 0 ? parts.join(' · ') : 'No grenades');
     },
     setTimer(text, urgent) {
       set('timer', text);
@@ -136,8 +155,8 @@ export function createHud(callbacks) {
       set('roundLabel', `ROUND ${round}`);
     },
     setAlive(k, w) {
-      set('aliveK', '●'.repeat(k) + '○'.repeat(Math.max(0, 3 - k)));
-      set('aliveW', '●'.repeat(w) + '○'.repeat(Math.max(0, 4 - w)));
+      set('aliveK', '●'.repeat(k) + '○'.repeat(Math.max(0, 5 - k)));
+      set('aliveW', '●'.repeat(w) + '○'.repeat(Math.max(0, 5 - w)));
     },
     setSpread(px) {
       const v = `${Math.round(px)}px`;
@@ -151,14 +170,13 @@ export function createHud(callbacks) {
       clearTimeout(hitTimer);
       hitTimer = setTimeout(() => { els.hitmarker.className = ''; }, kill ? 220 : 120);
     },
-    killfeed(killer, victim, head, killerTeam) {
+    killfeed(killer, victim, head, killerTeam, weapon) {
       const row = document.createElement('div');
       row.className = killerTeam === 0 ? 'kf k' : 'kf w';
-      row.innerHTML = '';
       const a = document.createElement('b');
       a.textContent = killer;
       const mid = document.createElement('span');
-      mid.textContent = head ? '  ⌖  ' : '  →  ';
+      mid.textContent = weapon ? `  [${weapon}${head ? ' xHS' : ''}]  ` : head ? '  ⌖  ' : '  →  ';
       const b = document.createElement('b');
       b.textContent = victim;
       row.append(a, mid, b);
@@ -221,14 +239,39 @@ export function createHud(callbacks) {
     showBuy(show) {
       els.buyMenu.hidden = !show;
     },
-    refreshBuy(money, owned, grenades, armor) {
+    refreshBuy(money, player) {
       els.buyMenu.querySelectorAll('[data-buy]').forEach((btn) => {
         const key = btn.getAttribute('data-buy');
         const price = Number(btn.getAttribute('data-price'));
-        const ownedAlready = key === 'armor' ? armor : key === 'grenade' ? grenades >= 2 : !!owned[key];
+        let ownedAlready;
+        if (key === 'armor') ownedAlready = player.armor;
+        else if (key === 'helmet') ownedAlready = player.helmet;
+        else if (key === 'kit') ownedAlready = player.kit;
+        else if (key === 'grenade') ownedAlready = player.grenades >= 2;
+        else if (key === 'smoke') ownedAlready = player.smoke >= 2;
+        else if (key === 'flash') ownedAlready = player.flashes >= 2;
+        else ownedAlready = !!player.owned[key];
         btn.disabled = ownedAlready || money < price;
         btn.classList.toggle('owned', ownedAlready);
       });
+    },
+    setFlash(amount) {
+      const v = Math.max(0, Math.min(1, amount));
+      if (cache.flash !== v) {
+        cache.flash = v;
+        els.flash.style.opacity = String(v);
+      }
+    },
+    showScores(show) {
+      els.scores.hidden = !show;
+    },
+    setScores(rows) {
+      const html = rows.map((r) => {
+        const cls = r.team === 0 ? 'k' : 'w';
+        const dead = r.alive ? '' : ' dead';
+        return `<tr class="${cls}${dead}"><td>${r.name}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.money}</td></tr>`;
+      }).join('');
+      setHtml('scoresBody', html);
     },
     hint(text, ms) {
       els.hint.textContent = text;
