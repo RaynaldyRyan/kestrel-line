@@ -57,7 +57,9 @@
   .kf.w b:first-child { color: var(--rust); }
   .kf span { color: var(--muted); }
 
-  #mates { position: fixed; left: 20px; top: 76px; display: flex; flex-direction: column; gap: 6px; width: 190px; }
+  #minimap { position: fixed; left: 20px; top: 18px; width: 148px; height: 148px; border: 1px solid var(--hairline); border-radius: 4px; }
+  #minimap-label { position: fixed; left: 20px; top: 170px; font-size: 10px; letter-spacing: .14em; color: var(--muted); }
+  #mates { position: fixed; left: 20px; top: 188px; display: flex; flex-direction: column; gap: 6px; width: 190px; }
   .mate { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 3px; padding: 5px 9px; font-size: 12px; }
   .mate span { width: 52px; letter-spacing: .06em; }
   .mate i { flex: 1; height: 6px; background: #2c313d; border-radius: 3px; overflow: hidden; }
@@ -68,7 +70,9 @@
 
   #health { position: fixed; left: 28px; bottom: 26px; width: 230px; }
   #health-text { font-family: var(--font-readout); font-size: 40px; line-height: 1; }
-  #armor-badge { display: inline-block; margin-left: 8px; font-size: 11px; letter-spacing: .1em; color: var(--teal); border: 1px solid var(--teal); border-radius: 3px; padding: 2px 6px; vertical-align: middle; }
+  #armor-line { margin-top: 6px; display: flex; gap: 8px; align-items: center; }
+  #armor-text { font-family: var(--font-readout); font-size: 13px; color: var(--teal); letter-spacing: .06em; }
+  .gear-badge { font-size: 10px; letter-spacing: .1em; color: var(--amber); border: 1px solid var(--amber); border-radius: 3px; padding: 2px 6px; }
   #health-bar { margin-top: 8px; height: 8px; background: #2c313d; border-radius: 4px; overflow: hidden; }
   #health-fill { display: block; height: 100%; background: var(--teal); transition: width 150ms linear; }
   #health-fill.low { background: var(--red); }
@@ -99,14 +103,31 @@
 
   #vignette { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 90px 30px rgba(255, 42, 30, 0); transition: box-shadow 120ms linear; }
   #vignette.hit { box-shadow: inset 0 0 90px 30px rgba(255, 42, 30, .55); }
+  #flash { position: fixed; inset: 0; pointer-events: none; background: #fff; opacity: 0; }
+
+  #scores { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); width: min(520px, 90%); background: var(--surface); border: 1px solid var(--hairline); border-radius: 6px; padding: 18px 22px; }
+  #scores h2 { margin: 0 0 10px; font-size: 18px; letter-spacing: .08em; }
+  #scores table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #scores th { text-align: left; font-size: 11px; letter-spacing: .12em; color: var(--muted); padding: 4px 8px 8px 0; }
+  #scores td { padding: 4px 8px 4px 0; font-family: var(--font-readout); }
+  #scores tr.k td:first-child { color: var(--teal); }
+  #scores tr.w td:first-child { color: var(--rust); }
+  #scores tr.dead { opacity: .45; }
 
   .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(18, 20, 27, .82); }
-  .overlay[hidden], #buy-menu[hidden], #bomb-status[hidden], #channel[hidden], #spectate[hidden], #hint[hidden], #banner[hidden], #armor-badge[hidden] { display: none; }
+  .overlay[hidden], #buy-menu[hidden], #bomb-status[hidden], #channel[hidden], #spectate[hidden], #hint[hidden], #banner[hidden], #scores[hidden], .gear-badge[hidden], #play[hidden], #team-pick[hidden] { display: none; }
   .panel { width: min(480px, 100%); padding: 34px; background: #1d212b; border: 1px solid var(--hairline); border-radius: 6px; }
   .panel h1 { margin: 0 0 10px; font-size: 36px; line-height: 1.1; letter-spacing: -.02em; }
   .panel p { margin: 0 0 24px; font-size: 15px; line-height: 1.55; color: var(--muted); }
   #play { font: inherit; font-weight: 600; padding: 13px 20px; border: 1px solid var(--teal); border-radius: 6px; background: var(--teal); color: #10201d; cursor: pointer; }
   #play:hover { background: var(--ink); border-color: var(--ink); }
+  #team-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  #team-pick button { font: inherit; text-align: left; padding: 14px; border-radius: 6px; cursor: pointer; background: #262b37; color: var(--ink); }
+  #team-pick button[data-team="0"] { border: 1px solid var(--teal); }
+  #team-pick button[data-team="1"] { border: 1px solid var(--rust); }
+  #team-pick button:hover { background: #30364a; }
+  #team-pick b { display: block; font-size: 15px; letter-spacing: .04em; }
+  #team-pick span { font-size: 12px; color: var(--muted); }
   .keys { margin: 26px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; color: var(--muted); }
   .keys li { display: flex; align-items: center; gap: 7px; }
   .keys kbd { min-width: 24px; padding: 2px 6px; border: 1px solid var(--hairline); border-radius: 4px; font-family: var(--font-readout); font-size: 11px; color: var(--ink); text-align: center; }
@@ -134,16 +155,19 @@
   <div id="crosshair"><i></i><i></i><i></i><i></i></div>
   <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
   <div id="topbar">
-    <span class="team k">KESTRELS</span><span id="alive-k">●●●</span>
+    <span class="team k">KESTRELS</span><span id="alive-k">●●●●●</span>
     <span id="score-k">0</span><span id="timer">1:40</span><span id="score-w">0</span>
-    <span id="alive-w">●●●●</span><span class="team w">WARDENS</span>
+    <span id="alive-w">●●●●●</span><span class="team w">WARDENS</span>
     <span id="round-label">ROUND 1</span>
   </div>
   <div id="killfeed"></div>
+  <canvas id="minimap" width="148" height="148"></canvas>
+  <div id="minimap-label">HALCYON DEPOT · RADAR</div>
   <div id="mates"></div>
   <div id="health">
-    <span id="health-text">100</span><span id="armor-badge" hidden>VEST</span>
+    <span id="health-text">100</span>
     <div id="health-bar"><span id="health-fill" style="width:100%"></span></div>
+    <div id="armor-line"><span id="armor-text">ARMOR 0</span><span id="helmet-badge" class="gear-badge" hidden>HELMET</span><span id="kit-badge" class="gear-badge" hidden>KIT</span></div>
   </div>
   <div id="ammo"><span id="ammo-mag">12</span><span id="ammo-reserve">/ 48</span><div id="weapon-name">P9 KESTREL</div></div>
   <div id="money">$800</div>
@@ -154,6 +178,11 @@
   <div id="hint" hidden></div>
   <div id="banner" hidden><div id="banner-title"></div><div id="banner-sub"></div></div>
   <div id="vignette"></div>
+  <div id="flash"></div>
+  <div id="scores" hidden>
+    <h2>SCOREBOARD</h2>
+    <table><thead><tr><th>PLAYER</th><th>KILLS</th><th>DEATHS</th><th>MONEY</th></tr></thead><tbody id="scores-body"></tbody></table>
+  </div>
 </div>
 
 <div id="buy-menu" hidden>
@@ -164,32 +193,40 @@
       <button data-buy="rifle" data-price="2500"><b>Harrier AR <em>$2500</em></b><span>Automatic rifle · 30 rounds · accurate on the move</span></button>
       <button data-buy="smg" data-price="1200"><b>Wasp-9 <em>$1200</em></b><span>Fast SMG · 25 rounds · close quarters</span></button>
       <button data-buy="dmr" data-price="3500"><b>Longbow DMR <em>$3500</em></b><span>Marksman rifle · 10 rounds · huge damage, right-click to aim</span></button>
-      <button data-buy="grenade" data-price="300"><b>Shard grenade <em>$300</em></b><span>Throw with G · 95 damage at the centre</span></button>
+      <button data-buy="grenade" data-price="300"><b>Shard grenade <em>$300</em></b><span>Throw with 3 · 95 damage at the centre</span></button>
+      <button data-buy="smoke" data-price="300"><b>Haze grenade <em>$300</em></b><span>Throw with 5 · smoke wall for 10s, blocks sight</span></button>
+      <button data-buy="flash" data-price="200"><b>Glare grenade <em>$200</em></b><span>Throw with 4 · blinds anyone looking at it</span></button>
       <button data-buy="armor" data-price="650"><b>Vest <em>$650</em></b><span>Halves all damage for the round</span></button>
+      <button data-buy="helmet" data-price="350"><b>Helmet <em>$350</em></b><span>Halves headshot damage for the round</span></button>
+      <button data-buy="kit" data-price="400"><b>Defuse kit <em>$400</em></b><span>Defuses the charge in half the time</span></button>
       <button data-buy="pistol" data-price="0"><b>P9 Kestrel <em>Owned</em></b><span>Sidearm · 12 rounds · always with you</span></button>
     </div>
-    <div class="buy-keys">Keys 1–5 buy · B or Esc closes · buy phase only</div>
+    <div class="buy-keys">Keys 1–9 buy · B or Esc closes · buy phase only</div>
   </section>
 </div>
 
 <div id="overlay" class="overlay">
   <section class="panel" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
     <h1 id="overlay-title">Kestrel Line</h1>
-    <p id="overlay-copy">Halcyon Depot, dusk. The Kestrels carry the charge; the Wardens hold Site A. First to five rounds takes the match.</p>
-    <button id="play" type="button">Click to play</button>
+    <p id="overlay-copy">Halcyon Depot, dusk. Two teams of five fight over two bomb sites: the Kestrels plant the charge at Site A or B, the Wardens stop them or take it apart. First to five rounds takes the match.</p>
+    <div id="team-pick">
+      <button data-team="0" type="button"><b>PLAY AS KESTRELS</b><span>Attack — carry the charge, take a site</span></button>
+      <button data-team="1" type="button"><b>PLAY AS WARDENS</b><span>Defend — hold the sites, defuse</span></button>
+    </div>
+    <button id="play" type="button" hidden>Click to play</button>
     <ul class="keys" id="keys-list">
       <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</li>
       <li><kbd>Mouse</kbd> Look · Click fire</li>
       <li><kbd>R</kbd> Reload</li>
       <li><kbd>1</kbd><kbd>2</kbd> Switch weapon</li>
-      <li><kbd>G</kbd> Throw grenade</li>
+      <li><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd> Frag · Flash · Smoke</li>
       <li><kbd>E</kbd> Plant / defuse</li>
       <li><kbd>B</kbd> Buy menu</li>
+      <li><kbd>Tab</kbd> Scoreboard</li>
       <li><kbd>Ctrl</kbd> Crouch</li>
       <li><kbd>Shift</kbd> Walk quietly</li>
       <li><kbd>Space</kbd> Jump</li>
       <li><kbd>Right click</kbd> Aim (DMR)</li>
-      <li><kbd>Esc</kbd> Pause</li>
     </ul>
   </section>
 </div>
